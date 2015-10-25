@@ -1,0 +1,1560 @@
+#:import AsyncImageOpenCV modules.image.img_opencv.AsyncImageOpenCV
+#:import ImageOpenCV modules.image.img_opencv.ImageOpenCV
+#:import SwapTransition kivy.uix.screenmanager.SwapTransition
+#:import FadeTransition kivy.uix.screenmanager.FadeTransition
+#:import SlideTransition kivy.uix.screenmanager.SlideTransition
+#:import OpacityScrollEffect kivy.effects.opacityscroll.OpacityScrollEffect
+#:import ScrollEffect kivy.effects.scroll.ScrollEffect
+#:import WrappableTextInput widgets.wraptextinput.WrappableTextInput
+#:import BidiLabel widgets.bidilabel.BidiLabel
+#:import BidiTextInput widgets.biditextinput.BidiTextInput
+#:import StableScrollView widgets.stablescrollview.StableScrollView
+#:import GridLayoutInt widgets.layoutint.GridLayoutInt
+
+#:import default_theme theme
+#:import get_theme_atlas theme.get_theme_atlas
+#:import get_post_atlas theme.get_post_atlas
+
+#:import default_config config
+
+#:import staticplaceholdertexture widgets.items.placeholder.staticplaceholdertexture
+
+#:import get_keyboard_top utilities.keyboard.get_keyboard_top
+
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+
+#:import Logger kivy.logger.Logger
+
+#:import Animation kivy.animation.Animation
+
+#:import FocusManager focusmanager.FocusManager
+
+#:import insiderr_version config.app_version
+#:import app_platform config.app_platform
+
+
+<ImageButtonBase>:
+    size_hint: None, None
+    size: self.texture_size
+    # use the keep_data property to control pixel-based hit-testing
+    keep_data: self.hit_test
+    source: self.background_down if self.state == 'down' and self.background_down else self.background_normal
+
+
+<ImageToggleButtonBase>:
+    theimage: theimage
+    thelabel: thelabel
+    size_hint: None, None
+    width: max(theimage.width, thelabel.width)
+    height: theimage.height + self.bottom_spacing
+
+    ImageOpenCV:
+        id: theimage
+        pos_hint: {'center_x': .5, 'top': 1}
+        size_hint: None, None
+        size: self.texture_size
+        color: root.color_disabled if root.disabled else (1, 1, 1, 1)
+        source: root.background_down if root.state == 'down' and root.background_down else root.background_normal
+
+    BidiLabel:
+        id: thelabel
+        size_hint: None, None
+        size: self.texture_size
+        font_size: root.font_size
+        font_name: root.font_name
+        pos_hint: {'center_x': .5, 'y': 0}
+        color: root.color_disabled if root.disabled else root.color_down if root.state == 'down' else root.color_normal
+        disabled_color: self.color
+        opacity: 0
+        text: root.title
+
+
+<CommentTemplate>:
+   # icon_widget: icon_widget
+    item_like: item_like
+    item_dislike: item_dislike
+    rows: 1
+    spacing: default_theme.comments_comment_sections_spacing, 0
+    size_hint: 1, None
+    height: self.minimum_height
+    canvas.before:
+        Color:
+            rgba: default_theme.back_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    #FloatLayout:
+     #   size_hint: None, 1
+     #   width: icon_widget.width
+     #   Image:
+      #      id: icon_widget
+       #     pos_hint: {'x': 0, 'top': 1}
+        #    source: (get_post_atlas() + '{}_{}'.format(root.theme, root.icon)) if root.icon else (get_theme_atlas() + 'comment_user')
+         #   color: get_color_from_hex(root.icon_color)
+          #  size_hint: None, None
+           # size: self.texture_size
+
+    GridLayoutInt:
+        cols: 1
+        size_hint: 1, None
+        height: self.minimum_height
+        padding: 0, default_theme.comments_comment_top_padding, 0, 0
+
+        BidiLabel:
+            id: the_label
+            size_hint: 1, None
+            height: self.texture_size[1]
+            color: default_theme.comments_comment_font_color
+            font_size: default_theme.comments_comment_font_size
+            font_name: default_theme.comments_comment_font_name
+            text_size: self.width, None
+            halign: 'left'
+            text: root.content
+
+        BidiLabel:
+            size_hint: 1, None
+            height: self.texture_size[1]
+            color: default_theme.comments_role_font_color
+            font_size: default_theme.comments_details_font_size
+            font_name: default_theme.comments_details_font_name
+            text_size: self.width, None
+            halign: 'left'
+            #text: '#{}'.format(root.role_text)
+
+        GridLayoutInt:
+            id: the_counts
+            rows: 1
+            size_hint: 1, None
+            height: self.minimum_height
+            spacing: default_theme.comments_details_sections_spacing, 0
+            padding: [int(default_theme.comments_details_sections_spacing/2), 0, 0, 0]
+
+            FloatLayout:
+                size_hint: 1, None
+                height: time_label.height
+                BidiLabel:
+                    id: time_label
+                    pos_hint: {'x': 0, 'top': 1}
+                    size_hint: None, None
+                    size: self.texture_size
+                    color: default_theme.comments_details_font_color
+                    font_size: default_theme.comments_details_font_size
+                    font_name: default_theme.comments_details_font_name
+                    padding: default_theme.comments_details_font_padding
+                    text: root.formatted_time
+
+            GridLayoutInt:
+                rows: 1
+                size_hint: None, None
+                size: self.minimum_size
+                ImageButton:
+                    id: item_like
+                    background_normal: get_theme_atlas() + 'comment_like{}'.format('-me' if root.attitude == 'like' else '')
+                BidiLabel:
+                    size_hint: None, None
+                    #width: default_theme.comments_details_font_size*1.75
+                    #height: self.texture_size[1]
+                    size: self.texture_size
+                    color: default_theme.comments_details_font_color
+                    font_size: default_theme.comments_details_font_size
+                    font_name: default_theme.comments_details_font_name
+                    padding: default_theme.comments_details_font_padding
+                    halign: 'left'
+                    text: str(root.upvote_count)
+
+            GridLayoutInt:
+                rows: 1
+                size_hint: None, None
+                size: self.minimum_size
+                ImageButton:
+                    id: item_dislike
+                    background_normal: get_theme_atlas() + 'comment_dislike{}'.format('-me' if root.attitude == 'dislike' else '')
+                BidiLabel:
+                    size_hint: None, None
+                    #width: default_theme.comments_details_font_size*1.75
+                    #height: self.texture_size[1]
+                    size: self.texture_size
+                    color: default_theme.comments_details_font_color
+                    font_size: default_theme.comments_details_font_size
+                    font_name: default_theme.comments_details_font_name
+                    padding: default_theme.comments_details_font_padding
+                    halign: 'left'
+                    text: str(root.downvote_count)
+
+<MyImage@Image>:
+    allow_stretch: True
+
+<PostBackground>:
+    image_widget: image_widget
+    size_hint: 1, None
+    height: image_widget.height
+
+    Widget:
+        size_hint: 1, 1
+        pos_hint: {'x': 0, 'y': 0}
+        canvas:
+            Color:
+                rgba: root.color or [0, 0, 0, 0]
+            BorderImage:
+                pos: self.pos
+                size: self.size
+                source: 'data/userpost_border.png'
+                border: 10, 10, 10, 10
+
+    #AsyncImageOpenCV:
+    MyImage:
+        id: image_widget
+        size_hint: 1, None
+        allow_stretch: True
+        nocache: True # we use our own set
+        height: int(self.width / self.image_ratio)
+        pos_hint: {'x': 0, 'y': 0}
+        #source: root.image # NEVER WE Do IT MANUALLY
+        opacity: 0 if root.color or not self.texture_size[0] else 1
+
+
+<SystemPostTemplate>:
+    BidiLabel:
+        size_hint: .90, None
+        pos_hint: {'center_x': .5, 'center_y': .5}
+        text_size: self.width, None
+        color: root.font_color
+        font_name: default_theme.userpost_title_font
+        font_size: default_theme.syspost_title_font_size
+        halign: 'center'
+        text: root.content
+    BidiLabel:
+        size_hint: 0.7, 0.12
+        pos_hint: {'center_x': .5, 'center_y': .2}
+        text_size: self.width, None
+        color: root.font_color
+        font_name: default_theme.syspost_button_font
+        font_size: default_theme.syspost_title_font_size
+        halign: 'center'
+        valign: 'middle'
+        text: root.button
+        canvas.before:
+            Color:
+                rgba: default_theme.syspost_button_color if self.text else (0, 0, 0, 0)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+
+<UserPostTemplate>:
+    item_options: item_options
+    item_share: item_share
+    item_like: item_like
+    item_dislike: item_dislike
+    item_comments: item_comments
+
+    BidiLabel:
+        size_hint: .90, None
+        pos_hint: {'center_x': .5, 'center_y': .5}
+        text_size: self.width, None
+        color: default_theme.userpost_font_color[root.icon_set]
+        font_name: default_theme.userpost_title_font
+        font_size: default_theme.userpost_title_font_size
+        halign: 'center'
+        text: root.content
+
+    GridLayoutInt:
+        padding: default_theme.userpost_top_bar_margins
+        rows: 1
+        size_hint: 1, None
+        height: self.minimum_height
+        pos_hint: {'x': 0, 'top': 1}
+
+        FloatLayout:
+            size_hint: 1, None
+            height: item_options.height
+            ImageOpenCV:
+                id: item_options
+                pos_hint: {'center_x': 1, 'center_y': .5}
+                size_hint: None, None
+                size: self.texture_size
+                source: get_theme_atlas() + 'feed_userpost_{}_options'.format(root.icon_set)
+
+        FloatLayout:
+            size_hint: 1, None
+            height: item_share.height
+            ImageOpenCV:
+                id: item_share
+                size_hint: None, None
+                pos_hint: {'right': 1, 'center_y': .5}
+                size: self.texture_size
+                source: get_theme_atlas() + 'feed_userpost_{}_share'.format(root.icon_set)
+
+    GridLayoutInt:
+        id: bottom_bar
+        rows: 1
+        padding: default_theme.userpost_bottom_bar_margins
+        size_hint: 1, None
+        height: self.minimum_height
+        pos_hint: {'x': 0, 'y': 0}
+
+        GridLayoutInt:
+            rows: 1
+            size_hint: 1, None
+            height: self.minimum_height
+            spacing: default_theme.userpost_bottom_bar_role_spacing
+
+            ImageOpenCV:
+                size_hint: None, None
+                size: self.texture_size
+                source: get_theme_atlas() + 'feed_userpost_{}_role-{}'.format(root.icon_set, root.role)
+
+            BidiLabel:
+                color: default_theme.userpost_font_color[root.icon_set]
+                font_name: default_theme.userpost_bottom_bar_font_name
+                font_size: default_theme.userpost_bottom_bar_role_font_size
+                padding: default_theme.userpost_bottom_bar_font_padding
+                text_size: self.size
+                valign: 'middle'
+                text: root.role_text
+
+        FloatLayout:
+            size_hint: None, 1
+            width: count_box.width
+
+            GridLayoutInt:
+                id: count_box
+                size_hint: None, None
+                size: self.minimum_size
+                pos_hint: {'x': 0, 'center_y': .5}
+                spacing: default_theme.userpost_bottom_bar_margins[0], 0
+                rows: 1
+
+                GridLayoutInt:
+                    rows: 1
+                    size_hint: None, None
+                    size: self.minimum_size
+                    ImageOpenCV:
+                        id: item_comments
+                        size_hint: None, None
+                        size: self.texture_size
+                        source: get_theme_atlas() + 'feed_userpost_{}_comment{}'.format(root.icon_set, '-me' if root.commented else '')
+                    BidiLabel:
+                        size_hint: None, 1
+                        width: self.texture_size[0]
+                        color: default_theme.userpost_font_color[root.icon_set]
+                        font_name: default_theme.userpost_bottom_bar_font_name
+                        font_size: default_theme.userpost_bottom_bar_font_size
+                        padding: default_theme.userpost_bottom_bar_font_padding
+                        text: str(root.comment_count)
+
+                GridLayoutInt:
+                    rows: 1
+                    size_hint: None, None
+                    size: self.minimum_size
+                    ImageOpenCV:
+                        id: item_like
+                        size_hint: None, None
+                        size: self.texture_size
+                        source: get_theme_atlas() + 'feed_userpost_{}_like{}'.format(root.icon_set, '-me' if (root.attitude == 'like') else '')
+                    BidiLabel:
+                        size_hint: None, 1
+                        width: self.texture_size[0]
+                        color: default_theme.userpost_font_color[root.icon_set]
+                        font_name: default_theme.userpost_bottom_bar_font_name
+                        font_size: default_theme.userpost_bottom_bar_font_size
+                        padding: default_theme.userpost_bottom_bar_font_padding
+                        text: str(root.upvote_count)
+
+                GridLayoutInt:
+                    rows: 1
+                    size_hint: None, None
+                    size: self.minimum_size
+                    ImageOpenCV:
+                        id: item_dislike
+                        size_hint: None, None
+                        size: self.texture_size
+                        source: get_theme_atlas() + 'feed_userpost_{}_dislike{}'.format(root.icon_set, '-me' if (root.attitude == 'dislike') else '')
+                    BidiLabel:
+                        size_hint: None, 1
+                        width: self.texture_size[0]
+                        color: default_theme.userpost_font_color[root.icon_set]
+                        font_name: default_theme.userpost_bottom_bar_font_name
+                        font_size: default_theme.userpost_bottom_bar_font_size
+                        padding: default_theme.userpost_bottom_bar_font_padding
+                        text: str(root.downvote_count)
+
+
+<UserPostFavNotification>:
+    rows: 1
+    size_hint: None, None
+    size: self.minimum_size
+    ImageOpenCV:
+        size_hint: None, None
+        size: self.texture_size
+        source: get_theme_atlas() + 'feed_userpost_{}_{}-me'.format(root.icon_set, root.key)
+    BidiLabel:
+        size_hint: None, 1
+        width: self.texture_size[0]
+        color: default_theme.userpost_font_color[root.icon_set]
+        font_name: default_theme.userpost_bottom_bar_font_name
+        font_size: default_theme.userpost_bottom_bar_font_size
+        padding: default_theme.userpost_bottom_bar_font_padding
+        text: str(root.count)
+
+
+<UserPostFavTemplate>:
+    notifications_container: notifications_container
+    size_hint: 1, None
+    height: default_theme.favs_userpost_height
+
+    canvas.after:
+        Color:
+            rgba: (0, 0, 0, 0) if self.changed else (0, 0, 0, .5)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Widget:
+        size_hint: 1, 1
+        pos_hint: {'x': 0, 'y': 0}
+        canvas:
+            Color:
+                rgba: root.color or [0, 0, 0, 0]
+            BorderImage:
+                pos: self.pos
+                size: self.size
+                source: 'data/userpost_border.png'
+                border: 10, 10, 10, 10
+
+    BidiLabel:
+        size_hint: .8, None
+        height: root.top-notifications_container.top - 5
+        pos_hint: {'center_x': .5, 'top': .99}
+        text_size: self.width, self.height
+        color: default_theme.userpost_font_color[root.icon_set]
+        font_name: default_theme.userpost_title_font
+        font_size: default_theme.favs_userpost_title_font_size
+        halign: 'center'
+        valign: 'middle'
+        text: root.content
+
+    GridLayoutInt:
+        id: notifications_container
+        rows: 1
+        size_hint: None, None
+        size: self.minimum_size
+        pos_hint: {'center_x': .5, 'y': .1}
+        spacing: default_theme.userpost_bottom_bar_margins[0], 0
+
+
+<ItemContainer>:
+    size_hint: 1, None
+    height: self.minimum_height
+    cols: 1
+    padding: default_theme.scroll_margins
+    spacing: 0, default_theme.feed_userpost_spacing
+
+
+<Bar>
+    rows: 1
+    size_hint: 1, None
+    height: self.minimum_height
+    canvas.before:
+        Color:
+            rgba: self.color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 1, 1, 1, 1 if self.shadow_height > 0 else 0
+        Rectangle:
+            source: get_theme_atlas() + 'feed_topbar-shadow'
+            pos: self.x, self.y - self.shadow_height
+            size: self.width, self.shadow_height
+
+    RelativeLayout:
+        size_hint: 1, None
+        height: left_button.height
+        ImageButton:
+            id: left_button
+            pos_hint: {'x': 0, 'center_y': .5}
+            background_normal: root.left_icon
+            on_press: root.dispatch('on_left_click', self.parent)
+
+    RelativeLayout:
+        size_hint: 1, None
+        height: right_button.height
+        ImageButton:
+            id: right_button
+            pos_hint: {'right': 1, 'center_y': .5}
+            background_normal: root.right_icon
+            on_press: root.dispatch('on_right_click', self.parent)
+            opacity: 1 if root.right_icon and not root.hide_right_icon else 0
+            disabled: self.opacity == 0
+
+
+<BarMiddleLabel>:
+    size_hint: 1, None
+    height: self.texture_size[1]
+    text_size: self.width, None
+    halign: 'center'
+    color: default_theme.bar_middle_label_color
+    font_size: default_theme.bar_middle_label_font_size
+    font_name: default_theme.bar_middle_label_font_name
+
+
+<BarMiddleImage>:
+    size_hint: 1, 1
+
+
+<BarMiddleButton>:
+    cols: 1
+    size_hint: 1, None
+    height: self.minimum_height
+
+    BidiLabel:
+        size_hint: 1, None
+        height: self.texture_size[1]
+        text_size: self.width, None
+        halign: 'center'
+        color: default_theme.bar_middle_label_color
+        font_size: default_theme.bar_middle_label_font_size
+        font_name: default_theme.bar_middle_label_font_name
+        text: root.title
+
+    ImageOpenCV:
+        size_hint: 1, None
+        size: self.texture_size
+        source: get_theme_atlas() + 'feed_drop-down'
+
+
+<MenuItem>:
+    rows: 1
+    size_hint_y: None
+    height: self.minimum_height
+    group: 'theme_menu_items'
+    canvas.before:
+        Color:
+            rgb: (1, 1, 1) if root.state == 'down' else (0, 0, 0)
+        Rectangle:
+            pos: self.x + self.item_sep_margin, self.y
+            size: self.width - (2 * self.item_sep_margin), self.height
+    BidiLabel:
+        size_hint_y: None
+        height: self.texture_size[1]
+        font_size: root.font_size
+        font_name: root.font_name
+        color: (0, 0, 0, 1) if root.state == 'down' else (1, 1, 1, 1)
+        text: root.title
+
+
+<Menu>:
+    canvas.before:
+        Color:
+            #rgba: root.background_color
+            rgba: root.outline_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+
+<ThemeMenuItem>:
+    padding: default_theme.feed_themes_menu_item_padding
+    font_size: default_theme.feed_themes_menu_font_size
+    font_name: default_theme.feed_themes_menu_font_name
+
+
+<ThemesMenu>:
+    place_size_hint_x: 0.65
+    item_cls: 'ThemeMenuItem'
+
+
+<FeedBarMiddleButton>:
+    title: '#startups'
+
+
+<FeedBarMiddleImage>:
+    source: get_theme_atlas() + 'feed_title'
+
+
+<FeedScreen>:
+    name: 'feed'
+    container: container
+    scrollview: scrollview
+    top_bar: top_bar
+    on_back:
+        #TODO: close app
+        pass
+    on_favs:
+        self.manager.current = 'favs'
+    on_item_selected:
+        self.manager.get_screen('comments').set_post(args[1])
+        self.manager.current = 'comments'
+    on_write_post:
+        self.manager.current = 'post'
+
+    RelativeLayout:
+        id: layout
+        canvas:
+            Color:
+                rgb: default_theme.back_color
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        StableScrollView:
+            id: scrollview
+            pos: 0, 0
+            top: top_bar.y
+            hit_bottom_threshold: 1.0
+            hit_top_threshold: 1.0
+            expand_stopped_bbox: 1.0
+            height: root.height - top_bar.height
+            size_hint: 1, None
+            disabled: root.menu_visible
+            do_scroll_x: False
+            canvas.after:
+                Color:
+                    rgba: 0, 0, 0, default_theme.popup_screen_opacity if root.menu_visible else 0
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            PostsContainer:
+                id: container
+                stablescrollview: scrollview
+                target: root
+                vote_swipe_target: layout
+
+        Label:
+            text: 'Loading posts...'
+            font_name: default_theme.comments_status_font_name
+            font_size: default_theme.comments_status_font_size
+            opacity: 1 if root.loading else 0
+
+        Bar:
+            id: top_bar
+            pos_hint: {'x': 0, 'top': 1 if app_platform not in ['ios', 'macosx'] else 0.98}
+            padding: default_theme.bar_margins
+            color: default_theme.back_color + [1]
+            left_icon: get_theme_atlas() + 'feed_favorites'
+            on_left_click: root.dispatch('on_favs')
+            right_icon: get_theme_atlas() + 'feed_write-post'
+            on_right_click: root.dispatch('on_write_post')
+            screen: root
+            middle_cls: 'FeedBarMiddleImage'
+            shadow_height: container.padding[1]
+            canvas.before:
+                Color:
+                    rgb: 0,0,0
+                Rectangle:
+                    pos: self.pos[0], self.pos[1]+self.size[1]/2
+                    size: self.size
+
+
+<FavsBarMiddleLabel@BarMiddleLabel>:
+    text: 'FAVORITES'
+
+
+<FavsScreen>:
+    name: 'favs'
+    enter_t: SlideTransition(direction='right')
+    leave_t: SlideTransition(direction='left')
+    on_back:
+        self.manager.current = 'feed'
+    on_close:
+        self.manager.current = 'feed'
+    on_item_selected:
+        self.manager.get_screen('comments').set_post_data(args[1])
+        self.manager.current = 'comments'
+
+    container: container
+    scrollview: scrollview
+
+    RelativeLayout:
+        canvas:
+            Color:
+                rgb: default_theme.back_color
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        StableScrollView:
+            id: scrollview
+            pos: 0, 0
+            top: top_bar.y
+            height: root.height - top_bar.height
+            size_hint: 1, None
+            expand_stopped_bbox: 2.0
+
+            RelativeLayout:
+                size_hint: 1, None if (root.status == 'populated' or container.children) else 1
+                height: container.height
+
+                FavsContainer:
+                    id: container
+                    stablescrollview: scrollview
+                    target: root
+
+                Label:
+                    text: 'Loading favorite posts...'
+                    font_name: default_theme.favs_status_font_name
+                    font_size: default_theme.favs_status_font_size
+                    opacity: 1 if (root.status == 'loading' and not container.children) else 0
+
+                Label:
+                    text: 'No favorite posts yet.'
+                    font_name: default_theme.favs_status_font_name
+                    font_size: default_theme.favs_status_font_size
+                    opacity: 1 if (root.status == 'empty' and not container.children) else 0
+
+        Bar:
+            id: top_bar
+            pos_hint: {'x': 0, 'top': 1 if app_platform not in ['ios', 'macosx'] else 0.98}
+            padding: default_theme.bar_margins
+            color: default_theme.back_color + [1]
+            left_icon: get_theme_atlas() + 'favorites_close'
+            on_left_click: root.dispatch('on_close')
+            right_icon: get_theme_atlas() + 'favorites_menu'
+            on_right_click: root.dispatch('on_menu', args[1])
+            middle_cls: 'FavsBarMiddleLabel'
+            width: 1080 ## no idea why but it fixes a bug in kivy 1.9.0 causing the height to be 240?!
+
+
+<ModalMenuItem>:
+    rows: 1
+    size_hint_y: None
+    size_hint_x: 1
+    height: self.minimum_height
+    padding: [1,1,1,1]
+    spacing: [1,1]
+    border: 1
+    font_name: default_theme.default_font_name
+    font_size: default_theme.default_font_size
+    pressed_bk_color: (1,1,1,1)
+    pressed_fg_color: (0,0,0,1)
+    bk_color: (0,0,0,1)
+    fg_color: (1,1,1,1)
+    canvas.before:
+        Color:
+            rgba: self.pressed_bk_color if root.state == 'down' else self.bk_color
+        Rectangle:
+            pos: self.x + root.border, self.y
+            size: self.width - (2 * root.border), self.height
+    BidiLabel:
+        size_hint_x: 1
+        size_hint_y: None
+        height: self.texture_size[1]
+        font_name: root.font_name
+        font_size: root.font_size
+        color: root.fg_color if root.state != 'down' else root.pressed_fg_color
+        text: root.title
+
+
+<ModalMenu>:
+    size_hint: 0.6, None
+    size: self.minimum_size
+    cols: 1
+    spacing: self.border, self.border
+    canvas:
+        Color:
+            rgba: self.border_color
+        Rectangle:
+            pos: self.x + 1, self.y + 1
+            size: self.width - 2, self.height - (0 if self.show_top_border else 2)
+
+
+<FavMenuItem@ModalMenuItem>:
+    padding: default_theme.favs_menu_item_padding
+    spacing: default_theme.favs_menu_item_spacing
+    font_name: default_theme.favs_menu_item_font_name
+    font_size: default_theme.favs_menu_item_font_size
+
+
+<AboutDialog>:
+    size_hint: 0.6, None
+    pos_hint: {'right': 0.05, 'top': .05}
+    cols: 1
+    border_color: default_theme.favs_menu_back_color
+    border: default_theme.favs_menu_border
+
+    FavMenuItem:
+        title: 'End user licence agreement'
+        action: 'on_eula'
+
+    FavMenuItem:
+        title: 'Privacy statement'
+        action: 'on_legal'
+
+    FavMenuItem:
+        title: 'Legal'
+        action: 'on_privacy'
+
+    FavMenuItem:
+        title: 'Insiderr version %s' % insiderr_version
+
+
+<FavDialog>:
+    size_hint: 0.6, None
+    pos_hint: {'right': 0.05, 'top': .05}
+    cols: 1
+    border_color: default_theme.favs_menu_back_color
+    border: default_theme.favs_menu_border
+    show_top_border: True
+
+    FavMenuItem:
+        title: 'Mark all read'
+        action: 'on_mark_all'
+
+    FavMenuItem:
+        title: 'Invite friends'
+        action: 'on_invite'
+
+    FavMenuItem:
+        title: 'Send feedback'
+        action: 'on_feedback'
+
+    FavMenuItem:
+        title: '%s Notifications' % ('Disable' if root.notify else 'Enable')
+        action: 'on_notifications'
+
+    FavMenuItem:
+        title: 'Rate us'
+        action: 'on_rate'
+
+    FavMenuItem:
+        title: 'About'
+        action: 'on_about'
+
+    FavMenuItem:
+        title: 'Update Linkedin'
+        action: 'on_linkedin'
+
+    FavMenuItem:
+        title: 'Exit App'
+        action: 'on_exit'
+
+<ShareItem>:
+    cols: 1
+    size_hint: None, None
+    size: self.minimum_size
+    spacing: 0, 10
+    pos_hint: {'center_x': .5, 'center_y': .5}
+
+    ImageOpenCV:
+        size_hint: None, None
+        size: self.texture_size
+        source: get_theme_atlas() + 'share_{}'.format(root.key)
+
+    BidiLabel:
+        size_hint: None, None
+        size: self.texture_size
+        font_name: default_theme.share_font_name
+        font_size: default_theme.share_font_size
+        color: 1, 1, 1, 1
+        text: root.title
+
+
+<ShareDialog>:
+    size_hint: None, None
+    size: self.minimum_size
+    cols: 2
+    padding: default_theme.share_menu_padding
+    spacing: default_theme.share_menu_spacing
+
+    canvas:
+        Color:
+            rgb: 0, 0, 0
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+
+<OptionsMenuItem@ModalMenuItem>:
+    padding: default_theme.postitem_menu_padding
+    spacing: default_theme.postitem_menu_spacing
+    font_name: default_theme.postitem_font_name
+    font_size: default_theme.postitem_font_size
+
+
+<OptionsMenu>:
+    border: default_theme.postitem_border
+    border_color: default_theme.postitem_back_color
+
+    OptionsMenuItem:
+        title: 'Share Post'
+        action: 'share'
+
+    OptionsMenuItem:
+        title: 'Remove from Favorites' if root.favorite else 'Add to Favorites'
+        action: 'favorite'
+
+    OptionsMenuItem:
+        title: 'Flag Inappropriate'
+        action: 'flag'
+
+    OptionsMenuItem:
+        title: 'Remove Post'
+        action: 'remove'
+
+
+<-AutosizeModal>:
+    auto_dismiss: True
+    canvas:
+        Color:
+            rgba: root.background_color
+        Rectangle:
+            size: self._window.size if self._window else (0, 0)
+
+
+<-CommentTextInput>:
+    size_hint: 1, None
+    def_min_height: 30
+    height: (self.minimum_height if self.minimum_height > 1.5*self.def_min_height else self.def_min_height) if self.focus else self.def_min_height
+    multiline: True
+    font_size: default_theme.comment_text_input_font_size
+    hint_text_color: default_theme.comment_text_input_hint_font_color
+    cursor_color: default_theme.comment_text_input_cursor_color
+    valign: 'bottom'
+    background_color: default_theme.comment_text_input_back_color if not self.focus else default_theme.comment_text_input_back_color_active
+    hint_text: 'Say what?'
+    canvas.before:
+        Color:
+            rgba: self.background_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: (self.cursor_color if self.focus and not self.cursor_blink else (0, 0, 0, 0))
+        Rectangle:
+            pos: [int(x) for x in self.cursor_pos]
+            size: 1, -self.line_height
+        Color:
+            rgba: self.disabled_foreground_color if self.disabled else (self.hint_text_color if not self.text and not self.focus else self.foreground_color)
+
+
+<CommentsRoleEntry>:
+    rows: 1
+    size_hint: 1, None
+    height: self.minimum_height
+    padding: 10
+    group: 'commentsroles'
+    spacing: default_theme.comment_role_input_spacing
+
+    canvas.before:
+        Color:
+            rgba: (0, 0.721, 0.95, 1) if root.state == 'down' else (0, 0, 0, 0.80)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    ImageOpenCV:
+        size_hint: None, None
+        size: self.texture_size
+        source: get_theme_atlas() + 'comment_roles_{}-s'.format(root.role)
+
+    BidiLabel:
+        size_hint: None, None
+        size: self.texture_size
+        font_name: default_theme.comments_comment_font_name
+        font_size: default_theme.default_font_size
+        color: 1, 1, 1, 1
+        halign: 'left'
+        text: root.role_desc
+
+
+<CommentsRoleMenu>:
+    size_hint_x: .65
+    border_color: (0,0,0,0)
+
+
+<CommentsScreen>:
+    name: 'comments'
+    enter_t: FadeTransition()
+    leave_t: FadeTransition()
+    on_back:
+        if not self.do_exit_input(): self.dispatch('on_close')
+    on_close:
+        self.manager.current = self.entered_from or 'feed'
+
+    post_box: post_box
+    comments_container: comments_container
+    comment_textinput: comment_textinput
+    textinput_layout: textinput_layout
+    scrollview: scrollview
+
+    RelativeLayout:
+        id: main_grid
+        size_hint: 1, 1
+        pos: 0, 0
+        canvas.before:
+            Color:
+                rgb: default_theme.back_color
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        StableScrollView:
+            id: scrollview
+            size_hint: 1, None
+            height: main_grid.height - root.textinput_collapsed_height
+            pos_hint: {'x': 0, 'top': 1}
+            expand_stopped_bbox: 1.0
+            do_scroll_x: False
+            disabled: comment_textinput.focus
+
+            GridLayoutInt:
+                cols: 1
+                pos: 0, 0
+                size_hint: 1, None
+                height: max(self.minimum_height, root.height-root.comment_textinput.height)
+                #height: self.minimum_height
+                padding: default_theme.scroll_margins
+                spacing: 0, default_theme.comments_vertical_spacing
+
+                # if app_platform in ['ios', 'macosx']
+                #     Add another RelativeLayout for spacing 0.02 height hint
+                #     See screens/comments.py code
+                RelativeLayout:
+                    id: post_box
+                    size_hint: 1, None
+
+                    ImageButton:
+                        pos_hint: {'x': 0, 'top': 1}
+                        width: self.texture_size[0] + default_theme.bar_margins[0]
+                        height: self.texture_size[1] + default_theme.bar_margins[1]
+                        background_normal: get_theme_atlas() + 'feed_userpost_{}_cancel'.format(root.userpost_icon_set)
+                        on_press: root.dispatch('on_close')
+
+                RelativeLayout:
+                    size_hint: 1, None if root.status == 'populated' else 1
+                    height: comments_container.height
+
+                    CommentsContainer:
+                        cols: 1
+                        pos: 0, 0
+                        id: comments_container
+                        stablescrollview: scrollview
+                        widgets_per_frame: 3
+                        min_visible_widgets_num: 5
+                        refresh_timer: 5.25
+                        size_hint: 1, None
+                        height: self.minimum_height
+                        spacing: 0, default_theme.comments_vertical_spacing
+                        target: root
+                        theme_key: root.post_theme
+
+                    Label:
+                        text: 'Loading comments...'
+                        font_name: default_theme.comments_status_font_name
+                        font_size: default_theme.comments_status_font_size
+                        opacity: 1 if root.status == 'loading' else 0
+
+                    GridLayoutInt:
+                        size_hint: None, None
+                        size: self.minimum_size
+                        cols: 1
+                        pos_hint: {'center_x': .5, 'center_y': .5}
+                        opacity: 1 if root.status == 'empty' else 0
+                        spacing: 0, default_theme.comments_status_vert_spacing
+
+                        Label:
+                            size_hint: None, None
+                            text: 'No comments yet. Be the first.'
+                            size: self.texture_size
+                            font_name: default_theme.comments_status_font_name
+                            font_size: default_theme.comments_status_font_size
+
+                        Image:
+                            size_hint: None, None
+                            size: self.texture_size
+                            source: get_theme_atlas() + 'comment_empty-arrow'
+
+
+        GridLayoutInt:
+            id: textinput_layout
+            rows: 1
+            size_hint_y: None
+            height: self.minimum_height
+            on_height: if not comment_textinput.focus: root.textinput_collapsed_height = args[-1]
+            padding: default_theme.scroll_margins
+            spacing: default_theme.comment_text_input_spacing
+            x: 0
+            y: root.keyboard_top if root.input_active else 0
+            canvas.before:
+                Color:
+                    rgb: 0, 0, 0
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                # cover keyboard background in case it disappears
+                Rectangle:
+                    pos: self.x, self.y - root.keyboard_top
+                    size: self.width, root.keyboard_top
+
+            #FloatLayout:
+            #    size_hint: None, 1
+            #    width: therole.width
+
+            #    ImageButton:
+                #    id: therole
+                 #   pos_hint: {'center_x': .5, 'center_y': 0.5}
+                  #  background_normal: get_theme_atlas() + 'comment_roles_{}'.format(root.role)
+                  #  on_release: root.toggle_role_menu(*args)
+
+            CommentTextInput:
+                id: comment_textinput
+                delimiters: u' \n\r\t'
+                def_min_height: thebutton.height
+                max_chars: default_config.comment_length_limit
+                on_text_validate:
+                    root.dispatch('on_comment')
+                on_focus:
+                    self.canvas.ask_update()
+                    FocusManager.on_focus(*args)
+
+            FloatLayout:
+                size_hint: None, 1
+                width: thebutton.width
+                ImageButton:
+                    id: thebutton
+                    background_normal: get_theme_atlas() + 'comment_action'
+                    pos_hint: {'center_x': .5, 'y': 0}
+                    on_press: root.dispatch('on_comment')
+
+
+
+<BackgroundColor>:
+    size_hint: None, 1
+    width: self.height
+    canvas:
+        Color:
+            rgb: get_color_from_hex(root.color)[:3]
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+
+<BackgroundImage>:
+    size_hint: None, 1
+    width: self.height
+
+
+#<ThemeIcon>:
+#    size_hint_x: 1
+#    group: 'theme_icons'
+#    show_label_timeout: 3.
+#    font_name: default_theme.post_themeicon_font_name
+#    font_size: default_theme.post_themeicon_font_size
+#    color_normal: default_theme.post_themeicon_font_color[self.icon_set]
+#    color_down: default_theme.userpost_font_color[self.icon_set]
+#    background_normal: get_post_atlas() + '{}-{}'.format(self.key, self.icon_set)
+#    background_down: get_post_atlas() + '{}-{}-selected'.format(self.key, self.icon_set)
+
+
+<RoleIcon>:
+    size_hint_x: 1
+    group: 'role_icons'
+    move_up_duration: .2
+    transition: 'linear'
+    hide_label: False
+    font_name: default_theme.post_themeicon_font_name
+    font_size: default_theme.post_themeicon_font_size
+    color_normal: default_theme.post_themeicon_font_color[self.icon_set]
+    color_down: default_theme.userpost_font_color[self.icon_set]
+    color_disabled: 1, 1, 1, 1
+    background_normal: get_theme_atlas() + 'post_{}_{}{}'.format(self.icon_set, self.key, '-multiple' if len(self.bubble) > 1 else '')
+    on_background_normal: Logger.info('BACKGROUND: %s' % args[-1])
+    background_down: get_theme_atlas() + 'post_{}_{}{}-chosen'.format(self.icon_set, self.key, '-multiple' if len(self.bubble) > 1 else '')
+    disabled: not self.bubble
+
+
+<RoleLabel>:
+    size_hint: 1, 1
+    font_name: default_theme.post_themeicon_font_name
+    font_size: default_theme.post_themeicon_font_size
+
+
+<RoleBubble>:
+    carousel: carousel
+    rows: 1
+    size_hint: None, None
+    size: self.minimum_size
+    padding: default_theme.post_roleicon_bubble_border
+    font_color: (v for k, v in default_theme.userpost_font_color.iteritems() if k != root.icon_set).next()
+    canvas:
+        Color:
+            rgba: 1,1,1,1
+        BorderImage:
+            border: default_theme.post_roleicon_bubble_border
+            source: get_theme_atlas() + 'post_{}_bubble-border'.format(self.icon_set)
+            size: self.size
+            pos: self.pos
+        Rectangle:
+            source: get_theme_atlas() + 'post_{}_bubble-arrow'.format(self.icon_set)
+            size: default_theme.post_roleicon_bubble_arrow_size
+            pos: self.arrow_x - int(default_theme.post_roleicon_bubble_arrow_size[0] / 2), self.y - default_theme.post_roleicon_bubble_arrow_size[1]
+
+    Carousel:
+        id: carousel
+        size_hint: None, None
+        size: 1, 1
+        loop: True
+
+
+<PostScreen>:
+    name: 'post'
+    enter_t: SlideTransition(direction='left')
+    leave_t: SlideTransition(direction='right')
+    on_back:
+        if not self.do_exit_input(): self.dispatch('on_close')
+    on_close:
+        #self.manager.current = getattr(self, 'entered_from', 'feed')
+        self.manager.current = 'feed'
+    on_post_created:
+        self.manager.get_screen('feed').get_new_posts()
+        self.manager.current = 'feed'
+    on_post_failed:
+        self.manager.current = 'feed'
+
+    post_background: post_background
+    themes_container: themes_container
+    thumbs_container: thumbs_container
+    post_textinput: post_textinput
+    scrollview: the_scrollview
+    write_post_icon: write_post_icon
+
+    GridLayoutInt:
+        id: grid
+        pos: 0, 0
+        cols: 1
+        padding: default_theme.scroll_margins
+        spacing: default_theme.scroll_margins
+        canvas.before:
+            Color:
+                rgb: default_theme.back_color
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        RelativeLayout:
+            size_hint: 1, None
+            height: grid.width - (grid.padding[0] + grid.padding[2])
+
+            PostBackground:
+                color: 0, 0, 0, 0
+                id: post_background
+
+            GridLayoutInt:
+                rows: 1
+                size_hint: None, None
+                size: self.minimum_size
+                pos_hint: {'center_x': .5}
+                y: post_textinput.top + default_theme.post_roletitle_bottom_padding
+
+                Label:
+                    text: root.role_prefix
+                    size_hint: None, None
+                    size: self.texture_size
+                    color: default_theme.userpost_font_color[root.icon_set]
+                    font_size: default_theme.post_roletitle_font_size
+                    font_name: default_theme.post_roletitle_prefix_font_name
+
+                BidiLabel:
+                    text: root.role_desc
+                    size_hint: None, None
+                    size: self.texture_size
+                    color: default_theme.userpost_font_color[root.icon_set]
+                    font_size: default_theme.post_roletitle_font_size
+                    font_name: default_theme.post_roletitle_desc_font_name
+                    opacity: default_theme.post_roletitle_desc_opacity
+
+                Label:
+                    text: root.role_suffix
+                    size_hint: None, None
+                    size: self.texture_size
+                    color: default_theme.userpost_font_color[root.icon_set]
+                    font_size: default_theme.post_roletitle_font_size
+                    font_name: default_theme.post_roletitle_prefix_font_name
+
+            WrappableTextInput:
+                id: post_textinput
+                delimiters: u' \n\r\t'
+                pos_hint: {'center_x': .5, 'center_y': .56}
+                size_hint: .9, None
+                height: self.minimum_height
+                background_color: 0, 0, 0, 0
+                foreground_color: default_theme.userpost_font_color[root.icon_set]
+                font_name: default_theme.userpost_title_font
+                font_size: default_theme.userpost_title_font_size
+                multiline: True
+                halign: 'center'
+                valign: 'middle'
+                hint_text_color: self.foreground_color[:3] + [.8]
+                always_blink_cursor: True
+                hint_text: ' ' # so we always have minimum height
+                text: ' ' # so we always have minimum height
+                max_chars: default_config.post_length_limit
+                on_text:
+                    the_bar.hide_right_icon = not args[-1].strip()
+                on_focus:
+                    FocusManager.on_focus(*args)
+
+            ImageOpenCV:
+                id: write_post_icon
+                source: get_theme_atlas() + 'post_{}_write-post'.format(root.icon_set)
+                pos_hint: {'center_x': .5, 'center_y': .56}
+                size_hint: None, None
+                size: self.texture_size
+                opacity: 0 if post_textinput.text.strip() or post_textinput.focus else 1
+
+            Bar:
+                id: the_bar
+                pos_hint: {'x': 0, 'top': 1 if app_platform not in ['ios', 'macosx'] else 0.98}
+                color: 0, 0, 0, 0
+                padding: default_theme.userpost_top_bar_margins
+                left_icon: get_theme_atlas() + 'feed_userpost_{}_cancel'.format(root.icon_set)
+                on_left_click: root.dispatch('on_close')
+                right_icon: get_theme_atlas() + 'feed_userpost_{}_action'.format(root.icon_set)
+                on_right_click: root.dispatch('on_post')
+
+            BoxLayout:
+                id: themes_container
+                pos_hint: {'x': 0, 'y': 0}
+                padding: default_theme.post_themeicon_container_padding
+
+        ScrollView:
+            id: the_scrollview
+            size_hint: 1, 1
+            effect_x: OpacityScrollEffect()
+            bar_width: 0
+
+            GridLayoutInt:
+                id: thumbs_container
+                order_vertical: True
+                rows: 2
+                size_hint: None, 1
+                width: self.minimum_width
+                spacing: 10, 10
+                padding: 5, 5, 5, 5
+
+
+<LinkedInDialog>:
+    cols: 1
+    size_hint: None, None
+    size: self.minimum_size
+    padding: default_theme.linkedin_padding
+    spacing: default_theme.linkedin_spacing
+
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        BorderImage:
+            pos: self.pos
+            size: self.size
+            source: 'data/linkedin_popup_border.png'
+            border: default_theme.linkedin_padding
+
+    BidiLabel:
+        size_hint: None, None
+        width: default_theme._scale_to_theme_dpi(560)
+        height: self.texture_size[1]
+        text_size: self.width, None
+        color: default_theme.linkedin_title_color
+        font_size: default_theme.linkedin_title_font_size
+        font_name: default_theme.linkedin_bold_font_name
+        halign: 'center'
+        text: root.title
+
+    GridLayoutInt:
+        cols: 1
+        size_hint: 1, None
+        height: self.minimum_height
+        spacing: default_theme.linkedin_spacing
+
+        BidiLabel:
+            size_hint: 1, None
+            height: self.texture_size[1]
+            text_size: self.width, None
+            color: default_theme.linkedin_body_color
+            font_size: default_theme.linkedin_body_font_size
+            font_name: default_theme.linkedin_normal_font_name
+            halign: 'justify'
+            text: root.line1
+
+        BidiLabel:
+            size_hint: 1, None
+            height: self.texture_size[1]
+            text_size: self.width, None
+            color: default_theme.linkedin_blue_color
+            font_size: default_theme.linkedin_body_font_size
+            font_name: default_theme.linkedin_bold_font_name
+            halign: 'center'
+            text: root.line2
+
+    ImageButton:
+        background_normal: get_theme_atlas() + 'login_action'
+        on_press: root.button_clicked()
+
+
+#<TutorialImage>:
+#    ImageOpenCV:
+#        size_hint: 1, None
+#        height: int(self.width / self.image_ratio)
+#        pos_hint: {'x': 0, 'top': 1}
+#        allow_stretch: True
+#        source: root.source
+#
+#
+#<TutorialProgressImage>:
+#    size_hint: None, None
+#    size: self.texture_size
+#    source: get_theme_atlas() + 'tutorial_{}-dot'.format(root.status)
+#
+#
+#<TutorialSkipButton>:
+#    size_hint: None, None
+#    size: self.texture_size[0] *2, self.texture_size[1]*2
+#    font_name: default_theme.tutorial_progress_font_name
+#    font_size: default_theme.tutorial_progress_font_size
+#    color: 1, 1, 1, 1
+#    text: 'SKIP'
+#    on_hide:
+#        Animation.cancel_all(self)
+#        Animation(opacity=0 if args[-1] else 1, d=.5).start(self)
+#    disabled: root.hide
+#
+#<HiddenButton>:
+#    size_hint: None, None
+#
+#<WelcomeScreen>:
+#    name: 'welcome'
+#    carousel: carousel
+#    progress_indicator: progress_indicator
+#    skip_button: skip_button
+#    on_complete: self.manager.current = 'feed'
+#    leave_t: FadeTransition()
+#
+#    FloatLayout:
+#        pos: 0, 0
+#        canvas.before:
+#            Color:
+#                rgb: default_theme.back_color
+#            Rectangle:
+#                pos: self.pos
+#                size: self.size
+#
+#        Carousel:
+#            id: carousel
+#            direction: 'right'
+#            on_index:
+#                root.set_index(args[-1])
+#
+#        GridLayout:
+#            id: progress_indicator
+#            pos_hint: {'center_x': .5, 'y': .02}
+#            size_hint: None, None
+#            size: self.minimum_size
+#            rows: 1
+#            spacing: default_theme.tutorial_dot_spacing
+#
+#        RelativeLayout:
+#            pos_hint: {'x': 0, 'top': 1}
+#            size_hint: (1, 0.1)
+#            HiddenButton:
+#                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+#                size_hint: (1, 1)
+#                font_name: default_theme.tutorial_bar_font_name
+#                font_size: default_theme.tutorial_bar_font_size
+#                text: 'WELCOME'
+#                on_hidden_press: root.dispatch('on_complete')
+#                canvas.before:
+#                    Color:
+#                        rgb: 0,0,0
+#                    Rectangle
+#                        pos: self.pos
+#                        size: self.size
+#            TutorialSkipButton:
+#                id: skip_button
+#                pos_hint: {'right': .97, 'center_y': 0.5}
+#                on_press: root.skip_to_last()
+
+
+<-FeedbackTextInput>:
+    size_hint: 1, 1
+    multiline: True
+    font_name: default_theme.feedback_font_name
+    font_size: default_theme.feedback_font_size
+    hint_text_color: default_theme.comment_text_input_hint_font_color
+    cursor_color: default_theme.comment_text_input_cursor_color
+    foreground_color: 1, 1, 1, 1 #0, 0, 0, 1
+    valign: 'top'
+    background_color: 0.1, 0.1, 0.1, 1 #default_theme.comment_text_input_back_color_active
+    hint_text: 'Write your feedback...'
+    canvas.before:
+        Color:
+            rgba: self.background_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: (self.cursor_color if self.focus and not self.cursor_blink else (0, 0, 0, 0))
+        Rectangle:
+            pos: [int(x) for x in self.cursor_pos]
+            size: 1, -self.line_height
+        Color:
+            rgba: self.disabled_foreground_color if self.disabled else (self.hint_text_color if not self.text and not self.focus else self.foreground_color)
+
+
+<FeedbackButton>:
+    size_hint: None, None
+    size: self.minimum_size
+    padding: default_theme.feedback_button_padding
+    rows: 1
+    canvas:
+        Color:
+            rgb: default_theme.syspost_button_color# 0, 0, 0
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Label:
+        size_hint: None, None
+        size: self.texture_size
+        color: 1, 1, 1, 1
+        font_name: default_theme.feedback_button_font_name
+        font_size: default_theme.feedback_button_font_size
+        text: 'SEND FEEDBACK'
+
+
+<FeedbackDialog>:
+    textinput: textinput
+    size_hint: .9, .333
+    cols: 1
+    padding: default_theme.feedback_padding
+    spacing: default_theme.feedback_spacing
+    canvas:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    FeedbackTextInput:
+        id: textinput
+        on_focus:
+            FocusManager.on_focus(*args)
+            root.dispatch('on_input_focus', args[-1])
+
+    FloatLayout:
+        size_hint: 1, None
+        height: button.height
+
+        FeedbackButton:
+            id: button
+            pos_hint: {'center_x': .5, 'center_y': .5}
+            on_press: root.dispatch('on_submit')
+
+
+<Root>:
+    manager: manager
+
+    MainScreenManager:
+        id: manager

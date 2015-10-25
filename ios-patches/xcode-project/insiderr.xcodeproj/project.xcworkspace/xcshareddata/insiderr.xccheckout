@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>3E71325B-5FA3-48CC-B6C3-44B000BB86CC</string>
+	<key>IDESourceControlProjectName</key>
+	<string>insiderr</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>FFB4FBC4CF52FC6EA490C14340F1A7DA5AA17449</key>
+		<string>git://github.com/kivy/kivy-ios</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>insiderr-ios/insiderr.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>FFB4FBC4CF52FC6EA490C14340F1A7DA5AA17449</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>git://github.com/kivy/kivy-ios</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>FFB4FBC4CF52FC6EA490C14340F1A7DA5AA17449</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>FFB4FBC4CF52FC6EA490C14340F1A7DA5AA17449</string>
+			<key>IDESourceControlWCCName</key>
+			<string>kivy-ios</string>
+		</dict>
+	</array>
+</dict>
+</plist>

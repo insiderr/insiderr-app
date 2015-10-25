@@ -1,0 +1,4 @@
+</activity>
+<service android:name="splash.InsiderrService"></service>
+<activity android:name="splash.InsiderrService">
+

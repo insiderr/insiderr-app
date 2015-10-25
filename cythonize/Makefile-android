@@ -1,0 +1,90 @@
+export PYTHON_FOR_ANDROID=../.buildozer/android/platform/python-for-android/dist/insiderr/python-install
+export NDK=$(HOME)/.buildozer/android/platform/android-ndk-r9c
+export NDK_BASE=$(NDK)
+PLATFORM=$(NDK)/platforms/android-9/arch-arm/
+
+NDK_PLATFORM_VERSION=9
+NDK_ABI=arm
+NDK_COMPILER_VERSION=4.8
+NDK_SYSROOT=$(NDK_BASE)/platforms/android-$(NDK_PLATFORM_VERSION)/arch-$(NDK_ABI)
+NDK_UNAME=linux
+HOST=$(NDK_ABI)-linux-androideabi
+NDK_TOOLCHAIN_BASE=$(NDK_BASE)/toolchains/$(HOST)-$(NDK_COMPILER_VERSION)/prebuilt/$(NDK_UNAME)-x86_64
+STL_DIR=$(NDK)/sources/cxx-stl/gnu-libstdc++/$(NDK_COMPILER_VERSION)
+
+
+LINKSTATE=-shared
+
+
+export CC=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-gcc-$(NDK_COMPILER_VERSION)
+export CXX=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-g++
+export AS=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-as
+export LD=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-ld
+export DEPCC=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-gcc
+export STRIP=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-strip
+export AR=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-ar
+export RANLIB=$(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-ranlib
+
+#export GCC_EXEC_PREFIX=$(HOST)-
+
+CXXFLAGS=--sysroot=$(NDK_SYSROOT) -fPIC -fpermissive -fexceptions -Wall -O2 -std=c++0x -D__STDC_CONSTANT_MACROS -march=armv7-a -mfpu=neon -DANDROID \
+-I$(NDK_SYSROOT)/usr/include -I../external-libs/opencv-2.4.8/build/include -I$(PYTHON_FOR_ANDROID)/include/python2.7 \
+-I$(STL_DIR)/include -I$(STL_DIR)/libs/armeabi-v7a/include
+
+LDFLAGS_OPENCV=--sysroot=$(NDK_SYSROOT) $(LINKSTATE) \
+-L$(NDK_TOOLCHAIN_BASE)/lib/gcc/$(NDK_ABI)-linux-androideabi/$(NDK_COMPILER_VERSION) \
+-L$(NDK_BASE)/sources/cxx-stl/gnu-libstdc++/$(NDK_COMPILER_VERSION)/libs/armeabi \
+-L$(NDK_SYSROOT)/usr/lib \
+-L../external-libs/opencv-2.4.8/build/android/armeabi-v7a \
+-L$(PYTHON_FOR_ANDROID)/lib \
+-march=armv7-a -mfpu=neon -fuse-ld=bfd -fPIC \
+-Wl,-Bstatic -lopencv_highgui -lopencv_imgproc -lopencv_core -ltbb -llibjasper -llibjpeg -llibpng -llibtiff -lIlmImf\
+-Wl,-Bstatic -lgnustl_static -lzz \
+-Wl,-Bdynamic -lc -lgcc -lm -llog -lpython2.7 \
+-Wl,--allow-shlib-undefined -Wl,--fix-cortex-a8 
+
+LDFLAGS=--sysroot=$(NDK_SYSROOT) $(LINKSTATE) \
+-L$(NDK_TOOLCHAIN_BASE)/lib/gcc/$(NDK_ABI)-linux-androideabi/$(NDK_COMPILER_VERSION) \
+-L$(NDK_BASE)/sources/cxx-stl/gnu-libstdc++/$(NDK_COMPILER_VERSION)/libs/armeabi \
+-L$(NDK_SYSROOT)/usr/lib \
+-L../external-libs/opencv-2.4.8/build/android/armeabi-v7a \
+-L$(PYTHON_FOR_ANDROID)/lib \
+-march=armv7-a -mfpu=neon -fuse-ld=bfd -fPIC \
+-Wl,-Bstatic -lgnustl_static -lzz \
+-Wl,-Bdynamic -lc -lgcc -lm -llog -lpython2.7 \
+-Wl,--allow-shlib-undefined -Wl,--fix-cortex-a8 
+
+export PATH:=$(PATH):$(NDK_TOOLCHAIN_BASE)/bin/
+
+# make sure we have 'as' in the cross-compiler folder - otherwise it won't compile
+QUERY := $(NDK_TOOLCHAIN_BASE)/bin/as
+FILES := $(wildcard $(NDK_TOOLCHAIN_BASE)/bin/*)
+NOTEXIST := $(filter-out $(FILES),$(QUERY) )
+    
+SOURCE=../app/modules/image/native_opencv.pyx
+CYTHON=native_opencv.cpp
+OBJECT=$(addsuffix .o, $(basename $(CYTHON)))
+EXECUTABLE=$(addsuffix .so, $(basename $(SOURCE)))
+
+all: $(NOTEXIST) $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECT)
+	$(CXX) $(OBJECT) $(LDFLAGS_OPENCV) -o $@
+	rm -f $(OBJECT)
+	rm -f $(CYTHON)
+
+$(NOTEXIST):
+	ln -s $(NDK_TOOLCHAIN_BASE)/bin/$(HOST)-as $(NDK_TOOLCHAIN_BASE)/bin/as
+
+$(OBJECT): $(CYTHON)
+	$(CC) $(CXXFLAGS) -c $< -o $@
+	
+$(CYTHON): $(SOURCE)
+	cython -t --cplus $< -o $@
+
+clean:
+	rm -f $(OBJECT)
+	rm -f $(EXECUTABLE)
+	rm -f $(CYTHON)
+
+

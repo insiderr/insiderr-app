@@ -1,0 +1,24 @@
+--- distribute.sh
++++ distribute.sh
+@@ -224,6 +224,9 @@ function push_arm() {
+ 	export MAKE="make -j5"
+ 	export READELF="$TOOLCHAIN_PREFIX-readelf"
+ 
++	# This will need to be updated to support Python versions other than 2.7
++	export BUILDLIB_PATH="$BUILD_hostpython/build/lib.linux-`uname -m`-2.7/"
++
+ 	# Use ccache ?
+ 	which ccache &>/dev/null
+ 	if [ $? -eq 0 ]; then 
+
+--- recipes/twisted/recipe.sh
++++ recipes/twisted/recipe.sh
+@@ -27,9 +27,9 @@ function build_twisted() {
+ 	export LDFLAGS="$LDFLAGS -L$LIBS_PATH"
+ 	export LDSHARED="$LIBLINK"
+ 
+-	export PYTHONPATH=$BUILD_hostpython/Lib/site-packages:$BUILD_hostpython/build/lib.linux-x86_64-2.7
++	export PYTHONPATH=$SITEPACKAGES_PATH:$BUILDLIB_PATH
+ 
+ 	# fake try to be able to cythonize generated files
+ 	$HOSTPYTHON setup.py build_ext

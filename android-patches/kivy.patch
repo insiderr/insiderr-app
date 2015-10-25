@@ -1,0 +1,248 @@
+--- dist/insiderr/python-install/lib/python2.7/site-packages/kivy/base.py
++++ dist/insiderr/python-install/lib/python2.7/site-packages/kivy/base.py
+@@ -89,7 +89,6 @@
+ 
+ #: Instance of a :class:`ExceptionManagerBase` implementation.
+ ExceptionManager = register_context('ExceptionManager', ExceptionManagerBase)
+-
+ 
+ class EventLoopBase(EventDispatcher):
+     '''Main event loop. This loop handles the updating of input and
+@@ -109,6 +108,12 @@
+         self.event_listeners = []
+         self.window = None
+         self.me_list = []
++
++        self.tic_fps_before_kick=Clock._max_fps
++        self.tic_fps_kicked=0
++        self.KICK_DOWN_FPS = 10.0
++        self.IDLE_SEC_TIMEOUT = 3.0
++
+ 
+     @property
+     def touches(self):
+@@ -302,12 +307,15 @@
+             self.input_events = mod.process(events=self.input_events)
+ 
+         # real dispatch input
++        num_input_events = len(self.input_events)
+         input_events = self.input_events
+         pop = input_events.pop
+         post_dispatch_input = self.post_dispatch_input
+         while input_events:
+             post_dispatch_input(*pop(0))
+ 
++        return num_input_events
++
+     def idle(self):
+         '''This function is called after every frame. By default:
+ 
+@@ -321,7 +329,7 @@
+         Clock.tick()
+ 
+         # read and dispatch input from providers
+-        self.dispatch_input()
++        interrupt_events = self.dispatch_input()
+ 
+         # flush all the canvas operation
+         Builder.sync()
+@@ -336,6 +344,21 @@
+         if window and window.canvas.needs_redraw:
+             window.dispatch('on_draw')
+             window.dispatch('on_flip')
++            interrupt_events+=1
++
++        # if there was an input event (touched) kick to high gear (fps)
++        if interrupt_events > 0:
++            self.tic_fps_kicked = self.tic_fps_before_kick*self.IDLE_SEC_TIMEOUT
++            if self.tic_fps_before_kick != Clock._max_fps :
++                Clock._max_fps = self.tic_fps_before_kick
++                Logger.info('KICKBACK %.2f' % Clock._max_fps)
++        else:
++            self.tic_fps_kicked -= 1
++            if (self.tic_fps_kicked<=0) and (self.tic_fps_before_kick == Clock._max_fps) \
++                                        and (Clock._max_fps>self.KICK_DOWN_FPS):
++                self.tic_fps_before_kick = Clock._max_fps
++                Clock._max_fps = self.KICK_DOWN_FPS
++                Logger.info('IDLE %.2f' % Clock._max_fps)
+ 
+         # don't loop if we don't have listeners !
+         if len(self.event_listeners) == 0:
+
+
+--- dist/insiderr/python-install/lib/python2.7/site-packages/kivy/core/audio/__init__.py
++++ dist/insiderr/python-install/lib/python2.7/site-packages/kivy/core/audio/__init__.py
+@@ -190,15 +190,19 @@
+ # seem to have lot of crackle or something...
+ audio_libs = []
+ 
+-# from now on, prefer our gstplayer instead of gi/pygst.
+-try:
+-    from kivy.lib.gstplayer import GstPlayer  # NOQA
+-    audio_libs += [('gstplayer', 'audio_gstplayer')]
+-except ImportError:
+-    #audio_libs += [('gi', 'audio_gi')]
+-    if PY2:
+-        audio_libs += [('pygst', 'audio_pygst')]
+-audio_libs += [('sdl', 'audio_sdl')]
+-audio_libs += [('pygame', 'audio_pygame')]
++from kivy import platform
++if platform == 'android':
++    audio_libs += [('pygame', 'audio_pygame')]
++else:
++    # from now on, prefer our gstplayer instead of gi/pygst.
++    try:
++        from kivy.lib.gstplayer import GstPlayer  # NOQA
++        audio_libs += [('gstplayer', 'audio_gstplayer')]
++    except ImportError:
++        #audio_libs += [('gi', 'audio_gi')]
++        if PY2:
++            audio_libs += [('pygst', 'audio_pygst')]
++    audio_libs += [('sdl', 'audio_sdl')]
++    audio_libs += [('pygame', 'audio_pygame')]
+ 
+ core_register_libs('audio', audio_libs)
+
+
+--- dist/insiderr/python-install/lib/python2.7/site-packages/kivy/core/image/__init__.py
++++ dist/insiderr/python-install/lib/python2.7/site-packages/kivy/core/image/__init__.py
+@@ -242,7 +242,6 @@
+         .. versionadded:: 1.6.0
+         '''
+         return self._nocache
+-
+ 
+ class ImageLoader(object):
+ 
+@@ -274,8 +273,7 @@
+                 for loader in ImageLoader.loaders:
+                     if ext not in loader.extensions():
+                         continue
+-                    Logger.debug('Image%s: Load <%s> from <%s>' %
+-                                 (loader.__name__[11:], zfilename, filename))
++                    Logger.debug('ImageLoader: %s -- Load <%s> from <%s>' % (loader.__name__[11:], zfilename, filename))
+                     try:
+                         im = loader(tmpfile, **kwargs)
+                     except:
+@@ -366,8 +364,7 @@
+             for loader in ImageLoader.loaders:
+                 if ext not in loader.extensions():
+                     continue
+-                Logger.debug('Image%s: Load <%s>' %
+-                             (loader.__name__[11:], filename))
++                Logger.debug('ImageLoader: %s -- Load <%s>' % (loader.__name__, filename))
+                 im = loader(filename, **kwargs)
+                 break
+             if im is None:
+@@ -574,6 +571,7 @@
+                 Keep the image data when the texture is created.
+         '''
+         kwargs.setdefault('keep_data', False)
++
+         return Image(filename, **kwargs)
+ 
+     def _get_image(self):
+@@ -793,12 +791,18 @@
+ image_libs = []
+ if platform in ('macosx', 'ios'):
+     image_libs += [('imageio', 'img_imageio')]
+-image_libs += [
+-    ('tex', 'img_tex'),
+-    ('dds', 'img_dds'),
+-    ('pygame', 'img_pygame'),
+-    ('pil', 'img_pil'),
+-    ('gif', 'img_gif')]
++elif platform == 'android':
++    image_libs += [
++        ('tex', 'img_tex'),
++        ('dds', 'img_dds'),
++        ('pygame', 'img_pygame')]
++else:
++    image_libs += [
++        ('tex', 'img_tex'),
++        ('dds', 'img_dds'),
++        ('pygame', 'img_pygame'),
++        ('pil', 'img_pil'),
++        ('gif', 'img_gif')]
+ libs_loaded = core_register_libs('image', image_libs)
+ 
+ from os import environ
+
+--- dist/insiderr/python-install/lib/python2.7/site-packages/kivy/core/window/__init__.py
++++ dist/insiderr/python-install/lib/python2.7/site-packages/kivy/core/window/__init__.py
+@@ -129,10 +129,7 @@
+ 
+     def _on_window_key_down(self, instance, keycode, scancode, text,
+                             modifiers):
+-        
+         keycode = (keycode, self.keycode_to_string(keycode))
+-        if text == '\x04':
+-            return
+         return self.dispatch('on_key_down', keycode, text, modifiers)
+ 
+     def _on_window_key_up(self, instance, keycode, *largs):
+@@ -302,7 +299,7 @@
+     '''Color used to clear the window.
+ 
+     ::
+-    
++
+         from kivy.core.window import Window
+ 
+         # red background color
+@@ -495,7 +492,7 @@
+ 
+         # mark as initialized
+         self.initialized = True
+-    
++
+     def toggle_fullscreen(self):
+         '''Toggle fullscreen on window'''
+         pass
+@@ -917,7 +914,7 @@
+         '''.. versionadded:: 1.0.4
+ 
+         Internal widget method to request the keyboard. This method is rarely
+-        required by the end-user as it is handled automatically by the 
++        required by the end-user as it is handled automatically by the
+         :class:`~kivy.uix.textinput.TextInput`. We expose it in case you want
+         to handle the keyboard manually for unique input scenarios.
+ 
+@@ -950,7 +947,7 @@
+         :Return:
+             An instance of :class:`Keyboard` containing the callback, target,
+             and if the configuration allows it, a
+-            :class:`~kivy.uix.vkeyboard.VKeyboard` instance attached as a 
++            :class:`~kivy.uix.vkeyboard.VKeyboard` instance attached as a
+             *.widget* property.
+ 
+         '''
+@@ -1035,10 +1032,20 @@
+             return True
+ 
+ 
+-#: Instance of a :class:`WindowBase` implementation
+-Window = core_select_lib('window', (
+-    ('egl_rpi', 'window_egl_rpi', 'WindowEglRpi'),
+-    ('pygame', 'window_pygame', 'WindowPygame'),
+-    ('sdl', 'window_sdl', 'WindowSDL'),
+-    ('x11', 'window_x11', 'WindowX11'),
+-), True)
++from kivy import platform as kivyplatform
++Window = None
++if kivyplatform == 'android':
++    #: Instance of a :class:`WindowBase` implementation
++    Window = core_select_lib('window', (
++        ('pygame', 'window_pygame', 'WindowPygame'),
++        ('sdl', 'window_sdl', 'WindowSDL'),
++        ('x11', 'window_x11', 'WindowX11'),
++    ), True)
++else:
++    #: Instance of a :class:`WindowBase` implementation
++    Window = core_select_lib('window', (
++        ('egl_rpi', 'window_egl_rpi', 'WindowEglRpi'),
++        ('pygame', 'window_pygame', 'WindowPygame'),
++        ('sdl', 'window_sdl', 'WindowSDL'),
++        ('x11', 'window_x11', 'WindowX11'),
++    ), True)
+

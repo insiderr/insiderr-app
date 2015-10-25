@@ -1,0 +1,467 @@
+--- src/src/org/renpy/android/SDLSurfaceView.java
++++ src/src/org/renpy/android/SDLSurfaceView.java
+@@ -618,7 +618,7 @@
+     }
+ 
+ 
+-    public void run() {
++    public void configEGL(){
+         mEgl = (EGL10) EGLContext.getEGL();
+ 
+         mEglDisplay = mEgl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+@@ -701,6 +701,11 @@
+         }
+ 
+         if (DEBUG) Log.d(TAG, "Done egl");
++    }
++            
++    public void run() {
++    
++        configEGL();   
+         waitForStart();
+ 
+         nativeResize(mWidth, mHeight);
+@@ -732,6 +737,20 @@
+     }
+ 
+     private void waitForStart() {
++        Log.d(TAG, "waitForStartloop");
++        synchronized (this) {
++            while (!mStarted) {
++                try {
++                        //Log.d(TAG, "looping...");
++                        this.wait(100);
++                } catch (InterruptedException e) {
++                    continue;
++                }
++            }
++        } 
++    }
++
++    private void original_waitForStart() {
+ 
+         int presplashId = mResourceManager.getIdentifier("presplash", "drawable");
+         InputStream is = mActivity.getResources().openRawResource(presplashId);
+
+
+--- dist/insiderr/src/org/renpy/android/SDLSurfaceView.java
++++ dist/insiderr/src/org/renpy/android/SDLSurfaceView.java
+@@ -618,7 +618,7 @@
+     }
+ 
+ 
+-    public void run() {
++    public void configEGL(){
+         mEgl = (EGL10) EGLContext.getEGL();
+ 
+         mEglDisplay = mEgl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+@@ -701,6 +701,11 @@
+         }
+ 
+         if (DEBUG) Log.d(TAG, "Done egl");
++    }
++            
++    public void run() {
++    
++        configEGL();   
+         waitForStart();
+ 
+         nativeResize(mWidth, mHeight);
+@@ -732,6 +737,20 @@
+     }
+ 
+     private void waitForStart() {
++        Log.d(TAG, "waitForStartloop");
++        synchronized (this) {
++            while (!mStarted) {
++                try {
++                        //Log.d(TAG, "looping...");
++                        this.wait(100);
++                } catch (InterruptedException e) {
++                    continue;
++                }
++            }
++        } 
++    }
++
++    private void original_waitForStart() {
+ 
+         int presplashId = mResourceManager.getIdentifier("presplash", "drawable");
+         InputStream is = mActivity.getResources().openRawResource(presplashId);
+         
+
+--- src/src/org/renpy/android/PythonActivity.java
++++ src/src/org/renpy/android/PythonActivity.java
+@@ -41,8 +41,9 @@
+ import android.content.SharedPreferences;
+ import android.content.Context;
+ 
+-
+-public class PythonActivity extends Activity implements Runnable {
++import splash.MyAppActivity;
++
++public class PythonActivity extends MyAppActivity implements Runnable {
+     private static String TAG = "Python";
+ 
+     // The audio thread for streaming audio...
+@@ -65,6 +66,8 @@
+     private File mPath = null;
+ 
+     boolean _isPaused = false;
++    
++    boolean unpacking = false;
+ 
+     private static final String DB_INITIALIZED = "db_initialized";
+ 
+@@ -111,8 +114,6 @@
+                 // pass
+             }
+ 
+-
+-
+         } else if (resourceManager.getString("public_version") != null) {
+             mPath = externalStorage;
+         } else {
+@@ -136,6 +137,12 @@
+         if ( Configuration.use_billing ) {
+             mBillingHandler = new Handler();
+         }
++        
++        if ( checkUnpackData("private", getFilesDir()) || checkUnpackData("public", externalStorage) ) {
++            setShowTutotrial(true);
++        }
++
++	    onCreateBeforeSurface(resourceManager);
+ 
+         // Start showing an SDLSurfaceView.
+         mView = new SDLSurfaceView(
+@@ -143,8 +150,9 @@
+                 mPath.getAbsolutePath());
+ 
+         Hardware.view = mView;
+-        setContentView(mView);
+-
++
++	    setContentView(mView);
++        
+         // Force the background window color if asked
+         if ( this.mInfo.metaData.containsKey("android.background_color") ) {
+             getWindow().getDecorView().setBackgroundColor(
+@@ -175,21 +183,38 @@
+         }
+     }
+ 
+-    public void recursiveDelete(File f) {
++    public void recursiveDelete(File f) {	
+         if (f.isDirectory()) {
+             for (File r : f.listFiles()) {
+                 recursiveDelete(r);
+             }
+         }
+-        f.delete();
+-    }
+-
+-
+-    /**
++		// get file extension 
++		String extension = "";
++		String n = f.getName();
++		int i = n.lastIndexOf('.');
++		if (i > 0) {
++			extension = n.substring(i+1);
++		}
++		
++		try{
++			// do not delete .persistence files
++			if ( !extension.equals("persistence") )
++			{
++				f.delete();
++			}
++		}
++		catch(Exception e){
++			// if any error occurs - meh let's hope for the best
++		}
++    }
++
++    
++     /**
+      * This determines if unpacking one the zip files included in
+      * the .apk is necessary. If it is, the zip file is unpacked.
+      */
+-    public void unpackData(final String resource, File target) {
++    public Boolean checkUnpackData(final String resource, File target) {
+ 
+         // The version of data in memory and on disk.
+         String data_version = resourceManager.getString(resource + "_version");
+@@ -197,7 +222,7 @@
+ 
+         // If no version, no unpacking is necessary.
+         if (data_version == null) {
+-            return;
++            return false;
+         }
+ 
+         // Check the current disk version, if any.
+@@ -217,10 +242,53 @@
+         // If the disk data is out of date, extract it and write the
+         // version file.
+         if (! data_version.equals(disk_version)) {
++            return true;
++        }
++        
++        return false;
++    }
++
++
++    /**
++     * This determines if unpacking one the zip files included in
++     * the .apk is necessary. If it is, the zip file is unpacked.
++     */
++    public void unpackData(final String resource, File target) {
++
++        // The version of data in memory and on disk.
++        String data_version = resourceManager.getString(resource + "_version");
++        String disk_version = null;
++
++        // If no version, no unpacking is necessary.
++        if (data_version == null) {
++            return;
++        }
++
++        // Check the current disk version, if any.
++        String filesDir = target.getAbsolutePath();
++        String disk_version_fn = filesDir + "/" + resource + ".version";
++
++        try {
++            byte buf[] = new byte[64];
++            InputStream is = new FileInputStream(disk_version_fn);
++            int len = is.read(buf);
++            disk_version = new String(buf, 0, len);
++            is.close();
++        } catch (Exception e) {
++            disk_version = "";
++        }
++
++        // If the disk data is out of date, extract it and write the
++        // version file.
++        if (! data_version.equals(disk_version)) {
+             Log.v(TAG, "Extracting " + resource + " assets.");
+ 
+             recursiveDelete(target);
+-            target.mkdirs();
++			try{
++				target.mkdirs();
++			}catch(Exception e){
++				// if any error occurs - we will survive				
++			}
+ 
+             AssetExtract ae = new AssetExtract(this);
+             if (!ae.extractTar(resource + ".mp3", target.getAbsolutePath())) {
+@@ -244,8 +312,10 @@
+ 
+     public void run() {
+ 
++        Log.d("Python","extracting tar...");
+         unpackData("private", getFilesDir());
+         unpackData("public", externalStorage);
++        Log.d("Python","done extracting tar...");
+ 
+         System.loadLibrary("sdl");
+         System.loadLibrary("sdl_image");
+@@ -388,6 +458,7 @@
+ 
+     @Override
+     protected void onNewIntent(Intent intent) {
++        super.onNewIntent(intent);
+         if ( this.newIntentListeners == null )
+             return;
+         if ( this.mView != null )
+
+
+--- dist/insiderr/src/org/renpy/android/PythonActivity.java
++++ dist/insiderr/src/org/renpy/android/PythonActivity.java
+@@ -41,8 +41,9 @@
+ import android.content.SharedPreferences;
+ import android.content.Context;
+ 
+-
+-public class PythonActivity extends Activity implements Runnable {
++import splash.MyAppActivity;
++
++public class PythonActivity extends MyAppActivity implements Runnable {
+     private static String TAG = "Python";
+ 
+     // The audio thread for streaming audio...
+@@ -65,6 +66,8 @@
+     private File mPath = null;
+ 
+     boolean _isPaused = false;
++    
++    boolean unpacking = false;
+ 
+     private static final String DB_INITIALIZED = "db_initialized";
+ 
+@@ -111,8 +114,6 @@
+                 // pass
+             }
+ 
+-
+-
+         } else if (resourceManager.getString("public_version") != null) {
+             mPath = externalStorage;
+         } else {
+@@ -136,6 +137,12 @@
+         if ( Configuration.use_billing ) {
+             mBillingHandler = new Handler();
+         }
++        
++        if ( checkUnpackData("private", getFilesDir()) || checkUnpackData("public", externalStorage) ) {
++            setShowTutotrial(true);
++        }
++
++	    onCreateBeforeSurface(resourceManager);
+ 
+         // Start showing an SDLSurfaceView.
+         mView = new SDLSurfaceView(
+@@ -143,8 +150,9 @@
+                 mPath.getAbsolutePath());
+ 
+         Hardware.view = mView;
+-        setContentView(mView);
+-
++
++	    setContentView(mView);
++        
+         // Force the background window color if asked
+         if ( this.mInfo.metaData.containsKey("android.background_color") ) {
+             getWindow().getDecorView().setBackgroundColor(
+@@ -175,21 +183,38 @@
+         }
+     }
+ 
+-    public void recursiveDelete(File f) {
++    public void recursiveDelete(File f) {	
+         if (f.isDirectory()) {
+             for (File r : f.listFiles()) {
+                 recursiveDelete(r);
+             }
+         }
+-        f.delete();
+-    }
+-
+-
+-    /**
++		// get file extension 
++		String extension = "";
++		String n = f.getName();
++		int i = n.lastIndexOf('.');
++		if (i > 0) {
++			extension = n.substring(i+1);
++		}
++		
++		try{
++			// do not delete .persistence files
++			if ( !extension.equals("persistence") )
++			{
++				f.delete();
++			}
++		}
++		catch(Exception e){
++			// if any error occurs - meh let's hope for the best
++		}
++    }
++
++    
++     /**
+      * This determines if unpacking one the zip files included in
+      * the .apk is necessary. If it is, the zip file is unpacked.
+      */
+-    public void unpackData(final String resource, File target) {
++    public Boolean checkUnpackData(final String resource, File target) {
+ 
+         // The version of data in memory and on disk.
+         String data_version = resourceManager.getString(resource + "_version");
+@@ -197,7 +222,7 @@
+ 
+         // If no version, no unpacking is necessary.
+         if (data_version == null) {
+-            return;
++            return false;
+         }
+ 
+         // Check the current disk version, if any.
+@@ -217,10 +242,53 @@
+         // If the disk data is out of date, extract it and write the
+         // version file.
+         if (! data_version.equals(disk_version)) {
++            return true;
++        }
++        
++        return false;
++    }
++
++
++    /**
++     * This determines if unpacking one the zip files included in
++     * the .apk is necessary. If it is, the zip file is unpacked.
++     */
++    public void unpackData(final String resource, File target) {
++
++        // The version of data in memory and on disk.
++        String data_version = resourceManager.getString(resource + "_version");
++        String disk_version = null;
++
++        // If no version, no unpacking is necessary.
++        if (data_version == null) {
++            return;
++        }
++
++        // Check the current disk version, if any.
++        String filesDir = target.getAbsolutePath();
++        String disk_version_fn = filesDir + "/" + resource + ".version";
++
++        try {
++            byte buf[] = new byte[64];
++            InputStream is = new FileInputStream(disk_version_fn);
++            int len = is.read(buf);
++            disk_version = new String(buf, 0, len);
++            is.close();
++        } catch (Exception e) {
++            disk_version = "";
++        }
++
++        // If the disk data is out of date, extract it and write the
++        // version file.
++        if (! data_version.equals(disk_version)) {
+             Log.v(TAG, "Extracting " + resource + " assets.");
+ 
+             recursiveDelete(target);
+-            target.mkdirs();
++			try{
++				target.mkdirs();
++			}catch(Exception e){
++				// if any error occurs - we will survive				
++			}
+ 
+             AssetExtract ae = new AssetExtract(this);
+             if (!ae.extractTar(resource + ".mp3", target.getAbsolutePath())) {
+@@ -244,8 +312,10 @@
+ 
+     public void run() {
+ 
++        Log.d("Python","extracting tar...");
+         unpackData("private", getFilesDir());
+         unpackData("public", externalStorage);
++        Log.d("Python","done extracting tar...");
+ 
+         System.loadLibrary("sdl");
+         System.loadLibrary("sdl_image");
+@@ -388,6 +458,7 @@
+ 
+     @Override
+     protected void onNewIntent(Intent intent) {
++        super.onNewIntent(intent);
+         if ( this.newIntentListeners == null )
+             return;
+         if ( this.mView != null )
+
